@@ -67,5 +67,5 @@ export async function main(ns) {
     common.log(`Target selected:  ${selectedTarget.name}`);
     common.log(`Efficiency: ${ns.nFormat(selectedEfficiency, '00.00')}, with an expected return of ${ns.nFormat(selectedTarget.maxMoney * selectedTarget.hackAmount, '0,000,000.00')} per thread.`);
     common.log('Beginning weaken stage');
-    ns.spawn('coordinatedweaken.js', 1, '--target', selectedTarget.name);
+    ns.spawn('weaken_coordinator.js', 1, '--target', selectedTarget.name);
 }

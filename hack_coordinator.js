@@ -19,10 +19,11 @@ export async function main(ns) {
         let targetMoney = server.moneyMax / 2;
         let currentMoney = ns.getServerMoneyAvailable(args.target);
         let currentSecurity = server.hackDifficulty;
+        let hackGoal = targetMoney - currentMoney;
         let maxDiff = server.minDifficulty + 5;
 
         common.log(`${args.target} currently holds ${ns.nFormat(currentMoney, '0,000,000.00')} available funds`);
-        if (Math.abs(currentMoney - targetMoney) < 1000) {
+        if (currentMoney < hackGoal) {
             common.log('Completed hack phase.');
             ns.spawn('mainloop.js', 1);
         }
@@ -30,7 +31,7 @@ export async function main(ns) {
         if (currentSecurity > maxDiff) {
             common.log(`Security level of ${currentSecurity} is beyond threshold.`);
             common.log(`Returning to weaken phase.`);
-            ns.spawn('coordinatedweaken.js', 1, '--target', args.target);
+            ns.spawn('weaken_coordinator.js', 1, '--target', args.target, '--nextStage', 'hack');
         }
 
         let usableHosts = [];
@@ -44,12 +45,12 @@ export async function main(ns) {
             throw new Error("found no usable hosts!");
         }
 
-        let neededThreads = ns.hackAnalyzeThreads(args.target, targetMoney);
+        let neededThreads = Math.ceil(ns.hackAnalyzeThreads(args.target, hackGoal) * 0.6);
         let hackRam = ns.getScriptRam('hack.js');
 
         let runningThreads = 0;
         let runningHosts = 0;     
-        common.log(`Hacking ${args.target} for ${ns.nFormat(targetMoney, '0,000,000.00')} will require ${neededThreads} threads.`);
+        common.log(`Hacking ${args.target} for ${ns.nFormat(hackGoal, '0,000,000.00')} will require ${neededThreads} threads.`);
         while (runningThreads < neededThreads) {
             let host = usableHosts.shift();
             if (host === undefined) {
@@ -60,7 +61,6 @@ export async function main(ns) {
             let ram = ns.getServerRam(host);
             let ramAvail = ram[0] - ram[1];
             let hostThreads = Math.floor(ramAvail / hackRam);
-            common.log(`Server ${host} has ${ramAvail} RAM. Can run ${hostThreads} threads.`);
 
             if (hostThreads > 0) {
                 ns.exec('hack.js', host, hostThreads, '--target', args.target);
@@ -73,7 +73,7 @@ export async function main(ns) {
 
         let awaitStart = new Date().getTime();
         while (runningHosts > 0) {
-            if (runningHosts % 10 == 0 || new Date().getTime() - awaitStart > 30000) {
+            if (new Date().getTime() - awaitStart > 60000) {
                 common.log(`Awaiting ${runningHosts} hosts...`)
                 awaitStart = new Date().getTime();
             }
@@ -81,7 +81,6 @@ export async function main(ns) {
             let data = await ns.readPort(common.ports.hackTickets);
             if (data !== 'NULL PORT DATA') {
                 runningHosts--;
-                common.log(`Host completed.`);
             } else {
                 await ns.asleep(10);
             }

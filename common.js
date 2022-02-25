@@ -7,9 +7,6 @@ export function initCommonObject(ns, requireHome = true) {
         }
     }
 
-    ns.tprint(`[${localeTimestamp()}] Started`);
-    ns.print(`[${localeTimestamp()}] Started`);
-
     return {
         ns,
         getItem: function (key) {

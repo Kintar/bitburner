@@ -24,13 +24,13 @@ export async function main(ns) {
         common.log(`${args.target} currently holds ${ns.nFormat(currentMoney, '0,000,000.00')} available funds`);
         if (Math.abs(currentMoney - targetMoney) < 1000) {
             common.log('Completed grow phase.');
-            ns.spawn('coordinatedhack.js', 1, '--target', args.target);
+            ns.spawn('hack_coordinator.js', 1, '--target', args.target);
         }
 
         if (currentSecurity > maxDiff) {
             common.log(`Security level of ${currentSecurity} is beyond threshold.`);
             common.log(`Returning to weaken phase.`);
-            ns.spawn('coordinatedweaken.js', 1, '--target', args.target);
+            ns.spawn('weaken_coordinator.js', 1, '--target', args.target);
         }
 
         let usableHosts = [];
@@ -44,7 +44,7 @@ export async function main(ns) {
             throw new Error("found no usable hosts!");
         }
 
-        let neededThreads = ns.growthAnalyze(args.target, targetMoney / currentMoney, 1);
+        let neededThreads = Math.ceil(ns.growthAnalyze(args.target, targetMoney / currentMoney, 1));
         let growRam = ns.getScriptRam('grow.js');
         let totalRamNeeded = neededThreads * growRam;
 
@@ -61,7 +61,6 @@ export async function main(ns) {
             let ram = ns.getServerRam(host);
             let ramAvail = ram[0] - ram[1];
             let hostThreads = Math.floor(ramAvail / growRam);
-            common.log(`Server ${host} has ${ramAvail} RAM. Can run ${hostThreads} threads.`);
 
             if (hostThreads > 0) {
                 ns.exec('grow.js', host, hostThreads, '--target', args.target);
@@ -74,7 +73,7 @@ export async function main(ns) {
 
         let awaitStart = new Date().getTime();
         while (runningHosts > 0) {
-            if (runningHosts % 10 == 0 || new Date().getTime() - awaitStart > 30000) {
+            if (new Date().getTime() - awaitStart > 60000) {
                 common.log(`Awaiting ${runningHosts} hosts...`)
                 awaitStart = new Date().getTime();
             }
